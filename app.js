@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 import cors from "cors";
 import productsRouter from "./routes/product.js";
 import detailRouter from "./routes/detail.js";
+import usersRouter from "./routes/users.js";
+import demoAsyncRouter from "./routes/demo-async.js";
+import demoPromiseRouter from "./routes/demo-promise.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -23,6 +26,9 @@ app.use('/', indexRouter);
 app.use('/categories', categoriesRouter);
 app.use('/products', productsRouter);
 app.use('/products/detail', detailRouter);
+app.use('/users',usersRouter);
+app.use('/demo', demoAsyncRouter);
+app.use('/demo-promise', demoPromiseRouter);
 
 app.listen(3000, ()=>{
     console.log('Server running on port 3000');
