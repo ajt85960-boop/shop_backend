@@ -1,7 +1,9 @@
 import express from "express";
 import db from "../models/db.js";
 import crypto from 'node:crypto';
-import {generateToken} from "../src/utils/auth.js"; // 推荐加上 node: 前缀，明确是内置模块
+import {generateToken} from "../src/utils/auth.js";
+// 推荐加上 node: 前缀，明确是内置模块
+import authMiddleware from "../src/middleware/authMiddleware.js";
 
 /**
  * SHA256 加密函数
@@ -14,19 +16,12 @@ export const hashPassword = (password) => {
 
 const router = express.Router();
 
-/* GET users listing. */
-router.get('/', function (req, res, next) {
-    res.json({
-        user: 'user me'
-    })
-});
-
 // 新增用户
 router.post('/register', async (req, res) => {
     //1.获取用户提交的信息
     const {username, password, mobile} = req.body;
     //2.查询是否有同名的姓名和电话
-    const [rows] = await db.query('SELECT * FROM users where username = ? AND mobile = ?', [username,mobile])
+    const [rows] = await db.query('SELECT * FROM users where username = ? AND mobile = ?', [username, mobile])
     //3.存在，提示错误
     if (rows.length > 0) {
         return res.status(400).json(
@@ -48,71 +43,71 @@ router.post('/register', async (req, res) => {
     };
     const jwt = await generateToken(newUser);
     return res.status(200).json({
-        message:"success",
+        message: "success",
         token: jwt
     })
 })
 
-    // `id` int NOT NULL AUTO_INCREMENT COMMENT '用户唯一ID',
-    // `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '登录用户名',
-    // `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '哈希加密后的密码',
-    // `mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '手机号',
-    // `nickname` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '用户昵称',
-    // `avatar` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '头像URL',
-    // `gender` tinyint NULL DEFAULT 0 COMMENT '性别：0-保密，1-男，2-女',
-    // `status` tinyint NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用，2-冻结',
+// `id` int NOT NULL AUTO_INCREMENT COMMENT '用户唯一ID',
+// `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '登录用户名',
+// `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '哈希加密后的密码',
+// `mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '手机号',
+// `nickname` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '用户昵称',
+// `avatar` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '头像URL',
+// `gender` tinyint NULL DEFAULT 0 COMMENT '性别：0-保密，1-男，2-女',
+// `status` tinyint NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用，2-冻结',
 // 查询用户
-router.get('/:id',async (req,res) => {
-    try{
-        const userId = req.params.id;
-        const [user] = await db.execute('SELECT id,username,password_hash,mobile,nickname,avatar,gender,status FROM ' +
-            'users where id = ?', [userId]);
-        console.log(user)
-        if(user.length === 0){
-            return res.status(400).json({
-                code: 400,
-                message: "找不到该用户"
-            })
-        }
+router.get('/info', authMiddleware, async (req, res) => {
+    try {
+
+        // const [user] = await db.execute('SELECT id,username,password_hash,mobile,nickname,avatar,gender,status FROM ' +
+        //     'users where id = ?', [userId]);
+        // console.log(user)
+        // if(user.length === 0){
+        //     return res.status(400).json({
+        //         code: 400,
+        //         message: "找不到该用户"
+        //     })
+        // }
 
         return res.json({
             code: 200,
-            message:"查询用户信息:success",
-            data: user
+            message: "查询用户信息:success",
+            data: req.user
         })
-    } catch(error) {
+    } catch (error) {
         return res.status(500).json({
-            code:500,
+            code: 500,
             data: '内部信息错误：' + error.message
         })
     }
 })
 
 // 用户登录
-router.post('/login',async (req, res) =>{
+router.post('/login', async (req, res) => {
     const {username, password} = req.body;
-    try{
+    try {
         //根据姓名查用户
         const [user] = await db.execute('SELECT * FROM users where username = ?', [username])
-        if(user.length === 0){
+        if (user.length === 0) {
             return res.status(400).json({
                 code: 400,
                 message: "用户名或密码有误，重新登录"
             })
         }
         const pwd = hashPassword(password)
-        if( pwd === user[0].password_hash){
-            const token = generateToken(user)
+        if (pwd === user[0].password_hash) {
+            const token = generateToken(user[0])
             //成功登录
             return res.json({
                 code: 200,
                 message: "用户成功登录",
                 data: {
-                    token:token,
-                    user: {
-                        username: user[0].username,
-                        id: user[0].id
-                    }
+                    token: token,
+                    // user: {
+                    //     username: user[0].username,
+                    //     id: user[0].id
+                    // }
                 }
             })
         } else {
@@ -121,10 +116,10 @@ router.post('/login',async (req, res) =>{
                 message: "用户名或密码有误"
             })
         }
-    }catch(error){
+    } catch (error) {
         console.error('登录错误:', error);
         return res.status(500).json({
-            code:500,
+            code: 500,
             message: '内部信息错误：' + error.message
         })
     }
