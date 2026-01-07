@@ -8,7 +8,7 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,    // 最大连接数
     queueLimit: 0,
-    port: 3308
+    port: 3306
 });
 
 export default pool;
